@@ -1,187 +1,162 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-	<title>Bubble (Three.js)</title>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<link rel=stylesheet href="css/base.css"/>
-</head>
-<body>
+	<head>
+		<title>three.js webgl - effects - anaglyph</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+	<body>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - effects - anaglyph<br/>
+			skybox by <a href="https://www.pauldebevec.com/" target="_blank" rel="noopener">Paul Debevec</a>
+		</div>
 
-<script src="js/Three.js"></script>
-<script src="js/Detector.js"></script>
-<script src="js/Stats.js"></script>
-<script src="js/OrbitControls.js"></script>
-<script src="js/THREEx.KeyboardState.js"></script>
-<script src="js/THREEx.FullScreen.js"></script>
-<script src="js/THREEx.WindowResize.js"></script>
+		<!-- Import maps polyfill -->
+		<!-- Remove this when import maps will be widely supported -->
+		<script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
 
-<!-- GUI for experimenting with values -->		
-<script type='text/javascript' src='js/DAT.GUI.min.js'></script>
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "./build/three.module.js",
+					"three/addons/": "./jsm/"
+				}
+			}
+		</script>
 
-<script src="js/shaders/FresnelShader.js"></script>
+		<script type="module">
 
-<!-- jQuery code to display an information button and box when clicked. -->
-<script src="js/jquery-1.9.1.js"></script>
-<script src="js/jquery-ui.js"></script>
-<link rel=stylesheet href="css/jquery-ui.css" />
-<link rel=stylesheet href="css/info.css"/>
-<script src="js/info.js"></script>
-<div id="infoButton"></div>
-<div id="infoBox" title="Demo Information">
-This three.js demo is part of a collection at
-<a href="http://stemkoski.github.io/Three.js/">http://stemkoski.github.io/Three.js/</a>
-</div>
-<!-- ------------------------------------------------------------ -->
+			import * as THREE from 'three';
 
-<div id="ThreeJS" style="position: absolute; left:0px; top:0px"></div>
-<script>
-/*
-	Three.js "tutorials by example"
-	Author: Lee Stemkoski
-	Date: July 2013 (three.js v59dev)
-*/
+			import { AnaglyphEffect } from 'three/addons/effects/AnaglyphEffect.js';
 
-// MAIN
+			let container, camera, scene, renderer, effect;
 
-// standard global variables
-var container, scene, camera, renderer, controls, stats;
-var keyboard = new THREEx.KeyboardState();
-var clock = new THREE.Clock();
-// custom global variables
-var cube;
+			const spheres = [];
 
-init();
-animate();
+			let mouseX = 0;
+			let mouseY = 0;
 
-// FUNCTIONS 		
-function init() 
-{
-	// SCENE
-	scene = new THREE.Scene();
-	// CAMERA
-	var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
-	var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
-	camera = new THREE.PerspectiveCamera( VIEW_ANGLE, ASPECT, NEAR, FAR);
-	scene.add(camera);
-	camera.position.set(0,150,400);
-	camera.lookAt(scene.position);	
-	// RENDERER
-	if ( Detector.webgl )
-		renderer = new THREE.WebGLRenderer( {antialias:true} );
-	else
-		renderer = new THREE.CanvasRenderer(); 
-	renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
-	container = document.getElementById( 'ThreeJS' );
-	container.appendChild( renderer.domElement );
-	// EVENTS
-	THREEx.WindowResize(renderer, camera);
-	THREEx.FullScreen.bindKey({ charCode : 'm'.charCodeAt(0) });
-	// CONTROLS
-	controls = new THREE.OrbitControls( camera, renderer.domElement );
-	// STATS
-	stats = new Stats();
-	stats.domElement.style.position = 'absolute';
-	stats.domElement.style.bottom = '0px';
-	stats.domElement.style.zIndex = 100;
-	container.appendChild( stats.domElement );
-	// LIGHT
-	var light = new THREE.PointLight(0xffffff);
-	light.position.set(0,250,0);
-	scene.add(light);
-	// FLOOR
-	var floorTexture = new THREE.ImageUtils.loadTexture( 'images/checkerboard.jpg' );
-	floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping; 
-	floorTexture.repeat.set( 10, 10 );
-	var floorMaterial = new THREE.MeshBasicMaterial( { map: floorTexture, side: THREE.DoubleSide } );
-	var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 10, 10);
-	var floor = new THREE.Mesh(floorGeometry, floorMaterial);
-	floor.position.y = -50.5;
-	floor.rotation.x = Math.PI / 2;
-	scene.add(floor);
-	// SKYBOX
-	var imagePrefix = "images/dawnmountain-";
-	var directions  = ["xpos", "xneg", "ypos", "yneg", "zpos", "zneg"];
-	var imageSuffix = ".png";
-	var skyGeometry = new THREE.CubeGeometry( 5000, 5000, 5000 );	
-	
-	var urls = [];
-	for (var i = 0; i < 6; i++)
-		urls.push( imagePrefix + directions[i] + imageSuffix );
-	
-	var materialArray = [];
-	for (var i = 0; i < 6; i++)
-		materialArray.push( new THREE.MeshBasicMaterial({
-			map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
-			side: THREE.BackSide
-		}));
-	var skyMaterial = new THREE.MeshFaceMaterial( materialArray );
-	var skyBox = new THREE.Mesh( skyGeometry, skyMaterial );
-	scene.add( skyBox );
-	
-	////////////
-	// CUSTOM //
-	////////////
-	
-	this.refractSphereCamera = new THREE.CubeCamera( 0.1, 5000, 512 );
-	scene.add( refractSphereCamera );
+			let windowHalfX = window.innerWidth / 2;
+			let windowHalfY = window.innerHeight / 2;
 
-	var fShader = THREE.FresnelShader;
-	
-	var fresnelUniforms = 
-	{
-		"mRefractionRatio": { type: "f", value: 1.02 },
-		"mFresnelBias": 	{ type: "f", value: 0.1 },
-		"mFresnelPower": 	{ type: "f", value: 2.0 },
-		"mFresnelScale": 	{ type: "f", value: 1.0 },
-		"tCube": 			{ type: "t", value: refractSphereCamera.renderTarget } //  textureCube }
-	};
-	
-	// create custom material for the shader
-	var customMaterial = new THREE.ShaderMaterial( 
-	{
-	    uniforms: 		fresnelUniforms,
-		vertexShader:   fShader.vertexShader,
-		fragmentShader: fShader.fragmentShader
-	}   );
-	
-	var sphereGeometry = new THREE.SphereGeometry( 100, 64, 32 );
-	this.sphere = new THREE.Mesh( sphereGeometry, customMaterial );
-	sphere.position.set(0, 50, 100);
-	scene.add(sphere);
-	
-	refractSphereCamera.position = sphere.position;
-	
-}
+			document.addEventListener( 'mousemove', onDocumentMouseMove );
 
-function animate() 
-{
-    requestAnimationFrame( animate );
-	render();		
-	update();
-}
+			init();
+			animate();
 
-function update()
-{
-	if ( keyboard.pressed("z") ) 
-	{ 
-		// do something
-	}
-	
-	controls.update();
-	stats.update();
-}
+			function init() {
 
-function render() 
-{
-	sphere.visible = false;
-	refractSphereCamera.updateCubeMap( renderer, scene );
-	sphere.visible = true;
-	
-	renderer.render( scene, camera );
-}
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
 
-</script>
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 100 );
+				camera.position.z = 3;
+				camera.focalLength = 3;
 
-</body>
+				const path = 'textures/cube/pisa/';
+				const format = '.png';
+				const urls = [
+					path + 'px' + format, path + 'nx' + format,
+					path + 'py' + format, path + 'ny' + format,
+					path + 'pz' + format, path + 'nz' + format
+				];
+
+				const textureCube = new THREE.CubeTextureLoader().load( urls );
+
+				scene = new THREE.Scene();
+				scene.background = textureCube;
+
+				const geometry = new THREE.SphereGeometry( 0.1, 32, 16 );
+				const material = new THREE.MeshBasicMaterial( { color: 0xffffff, envMap: textureCube } );
+
+				for ( let i = 0; i < 500; i ++ ) {
+
+					const mesh = new THREE.Mesh( geometry, material );
+
+					mesh.position.x = Math.random() * 10 - 5;
+					mesh.position.y = Math.random() * 10 - 5;
+					mesh.position.z = Math.random() * 10 - 5;
+
+					mesh.scale.x = mesh.scale.y = mesh.scale.z = Math.random() * 3 + 1;
+
+					scene.add( mesh );
+
+					spheres.push( mesh );
+
+				}
+
+				//
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				container.appendChild( renderer.domElement );
+
+				const width = window.innerWidth || 2;
+				const height = window.innerHeight || 2;
+
+				effect = new AnaglyphEffect( renderer );
+				effect.setSize( width, height );
+
+				//
+
+				window.addEventListener( 'resize', onWindowResize );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				effect.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentMouseMove( event ) {
+
+				mouseX = ( event.clientX - windowHalfX ) / 100;
+				mouseY = ( event.clientY - windowHalfY ) / 100;
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+
+			}
+
+			function render() {
+
+				const timer = 0.0001 * Date.now();
+
+				camera.position.x += ( mouseX - camera.position.x ) * .05;
+				camera.position.y += ( - mouseY - camera.position.y ) * .05;
+
+				camera.lookAt( scene.position );
+
+				for ( let i = 0, il = spheres.length; i < il; i ++ ) {
+
+					const sphere = spheres[ i ];
+
+					sphere.position.x = 5 * Math.cos( timer + i );
+					sphere.position.y = 5 * Math.sin( timer + i * 1.1 );
+
+				}
+
+				effect.render( scene, camera );
+
+			}
+
+		</script>
+
+	</body>
 </html>
