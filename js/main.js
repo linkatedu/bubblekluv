@@ -1,3 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - effects - anaglyph</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+	<body>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - effects - anaglyph<br/>
+			skybox by <a href="https://www.pauldebevec.com/" target="_blank" rel="noopener">Paul Debevec</a>
+		</div>
+
+		<!-- Import maps polyfill -->
+		<!-- Remove this when import maps will be widely supported -->
+		<script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../build/three.module.js",
+					"three/addons/": "./jsm/"
+				}
+			}
+		</script>
+
+		<script type="module">
+
 			import * as THREE from 'three';
 
 			import { AnaglyphEffect } from 'three/addons/effects/AnaglyphEffect.js';
@@ -126,3 +155,8 @@
 				effect.render( scene, camera );
 
 			}
+
+		</script>
+
+	</body>
+</html>
